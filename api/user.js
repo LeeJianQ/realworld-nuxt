@@ -15,3 +15,11 @@ export const register = (data) => {
     data,
   });
 };
+
+export const updateUser = (data) => {
+  return request({
+    url: "/api/user",
+    method: "PUT",
+    data,
+  });
+};

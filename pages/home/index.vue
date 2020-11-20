@@ -71,7 +71,9 @@
                   >
                     {{ article.author.username }}
                   </nuxt-link>
-                  <span class="date">{{ article.createdAt | date }}</span>
+                  <span class="date">{{
+                    article.createdAt | date("MMM DD, YYYY")
+                  }}</span>
                 </div>
                 <button
                   class="btn btn-outline-primary btn-sm pull-xs-right"
@@ -79,7 +81,7 @@
                     active: article.favorited,
                   }"
                   @click="onFavorite(article)"
-                  :disabled="article.favoriteDisabled"
+                  :disabled="article.favoriteDisabled || !user"
                 >
                   <i class="ion-heart"></i> {{ article.favoritesCount }}
                 </button>
@@ -96,6 +98,15 @@
                 <h1>{{ article.title }}</h1>
                 <p>{{ article.description }}</p>
                 <span>Read more...</span>
+                <ul class="tag-list">
+                  <li
+                    v-for="item in article.tagList"
+                    :key="item"
+                    class="tag-default tag-pill tag-outline"
+                  >
+                    {{ item }}
+                  </li>
+                </ul>
               </nuxt-link>
             </div>
 
@@ -161,7 +172,12 @@
 <script>
 import { mapState } from "vuex";
 import { getTags } from "@/api/tag";
-import { getArticles, getArticlesFeed } from "@/api/article";
+import {
+  getArticles,
+  getArticlesFeed,
+  addFavorite,
+  deleteFavorite,
+} from "@/api/article";
 export default {
   name: "HomePage",
   computed: {
@@ -170,13 +186,12 @@ export default {
       return Math.ceil(this.articlesCount / this.limit);
     },
   },
-  watchQuery: ["page", "tag", "tab"],
   async asyncData({ query }) {
     const page = Number.parseInt(query.page || 1);
     const limit = 20;
     const { tag } = query;
     const tab = query.tab || "global_feed";
-    const loadArticles = tab === "global_feed" ? getArticles : getArticlesFeed;
+    const loadArticles = tab !== "your_feed" ? getArticles : getArticlesFeed;
     const [articleList, tagRes] = await Promise.all([
       loadArticles({
         limit,
@@ -199,6 +214,22 @@ export default {
       limit,
       page,
     };
+  },
+  watchQuery: ["page", "tag", "tab"],
+  methods: {
+    async onFavorite(article) {
+      article.favoriteDisabled = true;
+      if (article.favorited) {
+        await deleteFavorite(article.slug);
+        article.favorited = false;
+        article.favoritesCount += -1;
+      } else {
+        await addFavorite(article.slug);
+        article.favorited = true;
+        article.favoritesCount += 1;
+      }
+      article.favoriteDisabled = false;
+    },
   },
   head() {
     return {
